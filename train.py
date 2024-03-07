@@ -59,6 +59,8 @@ def main(args):
     # Training loop
     indices = None
     observations = env.reset()
+    loss_array=np.zeros(args.num_iterations)
+    args.output_folder.mkdir(exist_ok=True)
     with trange(args.prefill + args.num_iterations, desc='Training') as pbar:
         for iteration in pbar:
             # Sample actions, execute them, and save transitions in the replay buffer
@@ -82,6 +84,21 @@ def main(args):
                 params, state, logs = gflownet.step(params, state, samples)
 
                 pbar.set_postfix(loss=f"{logs['loss']:.2f}", epsilon=f"{epsilon:.2f}")
+                loss_array[iteration-args.prefill]=logs['loss']
+                # save the loss array
+                np.save(args.output_folder / 'loss_array.npy', loss_array)
+
+            if iteration == 100000-1:
+                io.save(args.output_folder / 'model_100000.npz', params=params.online)
+
+            if iteration == 200000-1:
+                io.save(args.output_folder / 'model_200000.npz', params=params.online)
+
+            if iteration == 200500-1:
+                io.save(args.output_folder / 'model_200500.npz', params=params.online)
+            
+            if iteration == 300000-1:
+                io.save(args.output_folder / 'model_300000.npz', params=params.online)
 
     # Evaluate the posterior estimate
     posterior, _ = posterior_estimate(
@@ -93,26 +110,26 @@ def main(args):
         desc='Sampling from posterior'
     )
 
-    # Compute the metrics
-    ground_truth = nx.to_numpy_array(graph, weight=None)
-    results = {
-        'expected_shd': expected_shd(posterior, ground_truth),
-        'expected_edges': expected_edges(posterior),
-        **threshold_metrics(posterior, ground_truth)
-    }
+    # # Compute the metrics
+    # ground_truth = nx.to_numpy_array(graph, weight=None)
+    # results = {
+    #     'expected_shd': expected_shd(posterior, ground_truth),
+    #     'expected_edges': expected_edges(posterior),
+    #     **threshold_metrics(posterior, ground_truth)
+    # }
 
-    # Save model, data & results
-    args.output_folder.mkdir(exist_ok=True)
+    # # Save model, data & results
+    #args.output_folder.mkdir(exist_ok=True)
     with open(args.output_folder / 'arguments.json', 'w') as f:
         json.dump(vars(args), f, default=str)
-    data.to_csv(args.output_folder / 'data.csv')
-    with open(args.output_folder / 'graph.pkl', 'wb') as f:
-        pickle.dump(graph, f)
+    # data.to_csv(args.output_folder / 'data.csv')
+    # with open(args.output_folder / 'graph.pkl', 'wb') as f:
+    #     pickle.dump(graph, f)
     io.save(args.output_folder / 'model.npz', params=params.online)
     replay.save(args.output_folder / 'replay_buffer.npz')
     np.save(args.output_folder / 'posterior.npy', posterior)
-    with open(args.output_folder / 'results.json', 'w') as f:
-        json.dump(results, f, default=list)
+    # with open(args.output_folder / 'results.json', 'w') as f:
+    #     json.dump(results, f, default=list)
 
 
 if __name__ == '__main__':
@@ -191,6 +208,24 @@ if __name__ == '__main__':
 
     # Flow cytometry data (Sachs) with interventional data
     sachs_intervention = subparsers.add_parser('sachs_interventional')
+
+    causal_BH_ell = subparsers.add_parser('causal_BH_ell')
+
+    causal_BH_spr = subparsers.add_parser('causal_BH_spr')
+
+    causal_BH_spr_sph = subparsers.add_parser('causal_BH_spr_sph')
+
+    causal_BH_len = subparsers.add_parser('causal_BH_len')
+
+    causal_BH_full = subparsers.add_parser('causal_BH_full')
+
+    causal_BH_ell_half = subparsers.add_parser('causal_BH_ell_half')
+
+    causal_BH_ell_other_half = subparsers.add_parser('causal_BH_ell_other_half')
+
+    hello = subparsers.add_parser('hello')
+
+    yashar_dataset = subparsers.add_parser('yashar_dataset')
 
     args = parser.parse_args()
 

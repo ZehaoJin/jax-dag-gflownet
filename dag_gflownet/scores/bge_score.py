@@ -1,6 +1,6 @@
 import math
 import numpy as np
-
+import networkx as nx
 from scipy.special import gammaln
 
 from dag_gflownet.scores.base import BaseScore, LocalScore

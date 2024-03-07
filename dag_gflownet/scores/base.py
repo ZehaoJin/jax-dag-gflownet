@@ -2,6 +2,9 @@ import sys
 
 from collections import namedtuple
 from abc import ABC, abstractmethod
+#from functools import lru_cache
+#from dag_gflownet.utils.cache import LRUCache as lru_cache
+import networkx as nx
 
 LocalScore = namedtuple('LocalScore', ['key', 'score', 'prior'])
 
@@ -22,6 +25,7 @@ class BaseScore(ABC):
         self.column_names = list(data.columns)
         self.num_variables = len(self.column_names)
         self.prior.num_variables = self.num_variables
+        self.column_names_to_idx = {name: idx for idx, name in enumerate(self.column_names)}
 
     def __call__(self, index, in_queue, out_queue, error_queue):
         try:
@@ -46,6 +50,21 @@ class BaseScore(ABC):
     def get_local_scores(self, target, indices, indices_after=None):
         pass
 
+    @property
+    def cache_local_scores(self):
+        if self._cache_local_scores is None:
+            self._cache_local_scores = lru_cache()(self.get_local_scores)
+        return self._cache_local_scores
+
+    def score(self, graph):
+        graph = nx.relabel_nodes(graph, self.column_names_to_idx)
+        score = 0
+        for node in graph.nodes():
+            _, local_score = self.cache_local_scores(
+                node, tuple(graph.predecessors(node)))
+            score += local_score.score + local_score.prior
+        return score
+    
 
 class BasePrior(ABC):
     """Base class for the prior over graphs p(G).
